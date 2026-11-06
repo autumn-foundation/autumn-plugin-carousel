@@ -8,6 +8,10 @@ An accessible carousel widget pack for [Autumn](https://github.com/autumn-founda
 - It uses the Autumn design tokens, so dark mode and density work.
 - It works in right-to-left text and in forced colors.
 
+| Slideshow (light) | Rail (dark) | Gallery with thumbnails |
+|---|---|---|
+| ![A slideshow with dots](docs/images/carousel-slideshow-light.png) | ![A rail of three cards](docs/images/carousel-rail-dark.png) | ![A photo gallery with thumbnails](docs/images/carousel-gallery-light.png) |
+
 Before you add a carousel, read [Use carousels with care](docs/research.md#1-use-carousels-with-care).
 Use a carousel for product images, card rails and known content. Do not
 use it for a home page hero.
