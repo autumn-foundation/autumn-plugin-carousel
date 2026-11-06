@@ -167,6 +167,7 @@ dependencies = [
  "proptest",
  "scraper",
  "serde",
+ "thiserror",
  "tokio",
 ]
 

@@ -11,7 +11,7 @@ A carousel widget pack for Autumn (`autumn-web` 0.10).
 | `src/render.rs` | `carousel()`: the server markup. |
 | `src/stories.rs` | One story for each variant. Slugs start with `carousel-`. |
 | `src/carousel.css`, `src/carousel.js` | The pack assets. |
-| `tests/markup.rs` | Markup tests. Each test name starts with its AC number. |
+| `tests/markup.rs` | Markup tests. Each test name starts with its AC or decision number (`ac05_`, `d4_`). |
 | `tests/properties.rs` | Property tests of the markup rules. |
 | `tests/conformance.rs` | Static widget conformance and plugin wiring. |
 | `tests/browser.rs` | Chromium tests. `#[ignore]`d, behind `system-tests`. |
@@ -23,7 +23,7 @@ A carousel widget pack for Autumn (`autumn-web` 0.10).
 cargo fmt --all
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
-cargo test --features system-tests --test browser -- --ignored --test-threads=2
+cargo test --features system-tests --test browser -- --ignored --test-threads=1
 cargo llvm-cov --fail-under-lines 90 --ignore-filename-regex 'tests/'
 ```
 

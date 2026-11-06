@@ -56,7 +56,9 @@ impl<'a> Slide<'a> {
         }
     }
 
-    /// Give the slide a unique name. The default name is "N of M".
+    /// Give the slide a unique name. The default name comes from
+    /// [`CarouselText::position`](crate::CarouselText::position), for
+    /// example "2 of 5".
     ///
     /// Do not put the word "slide" in the name. The role name gives it.
     #[must_use]

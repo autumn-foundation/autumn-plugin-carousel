@@ -22,7 +22,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(128))]
 
     #[test]
-    fn markup_rules_hold(
+    fn ac14_markup_rules_hold(
         count in 0usize..12,
         start in 0usize..20,
         rail in proptest::option::of(0u8..9),
@@ -53,7 +53,7 @@ proptest! {
         let slides = all(&html, ".autumn-carousel-slide");
         prop_assert_eq!(slides.len(), count);
         for (i, slide) in slides.iter().enumerate() {
-            let id = format!("p-slide-{}", i + 1);
+            let id = format!("p--slide-{}", i + 1);
             let name = format!("{} of {count}", i + 1);
             prop_assert_eq!(attr(*slide, "id"), Some(id.as_str()));
             prop_assert_eq!(attr(*slide, "aria-label"), Some(name.as_str()));
@@ -62,7 +62,7 @@ proptest! {
         // Exactly one start slide, at the clamped index.
         let starts = all(&html, ".autumn-carousel-slide--start");
         prop_assert_eq!(starts.len(), 1);
-        let want = format!("p-slide-{}", start.min(count - 1) + 1);
+        let want = format!("p--slide-{}", start.min(count - 1) + 1);
         prop_assert_eq!(attr(starts[0], "id"), Some(want.as_str()));
 
         // No id repeats.
@@ -83,7 +83,10 @@ proptest! {
                 prop_assert!(markers.is_empty());
             } else {
                 prop_assert_eq!(markers.len(), count);
-                prop_assert_eq!(all(&html, "[aria-current='true']").len(), 1);
+                let current = all(&html, "[aria-current='true']");
+                prop_assert_eq!(current.len(), 1);
+                let href = format!("#p--slide-{}", start.min(count - 1) + 1);
+                prop_assert_eq!(attr(current[0], "href"), Some(href.as_str()));
             }
         }
 

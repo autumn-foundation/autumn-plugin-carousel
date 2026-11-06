@@ -38,10 +38,11 @@
 //! ];
 //! let config = CarouselConfig::new("chair", "Chair photos");
 //! let markup = carousel(&slides, &config, &FieldOptions::new());
-//! # assert!(markup.into_string().contains("chair-slide-2"));
+//! # assert!(markup.into_string().contains("chair--slide-2"));
 //! ```
 //!
-//! See `docs/design.md` for the markup, the behavior and the rules.
+//! The repository file `docs/design.md` gives the markup, the behavior
+//! and the acceptance criteria.
 
 mod config;
 mod render;
@@ -57,8 +58,8 @@ use autumn_web::plugin_contract::PluginContract;
 use autumn_web::widget_pack::WidgetPack;
 
 pub use config::{
-    CarouselConfig, CarouselText, DEFAULT_ROTATION_INTERVAL, Layout, MIN_ROTATION_INTERVAL,
-    Markers, PerView,
+    CarouselConfig, CarouselText, DEFAULT_ROTATION_INTERVAL, InvalidCarouselId, Layout,
+    MAX_ROTATION_INTERVAL, MIN_ROTATION_INTERVAL, Markers, PerView,
 };
 pub use render::carousel;
 pub use slide::Slide;
@@ -90,7 +91,10 @@ pub fn pack() -> WidgetPack {
 /// in the layout `<head>`, after the core widget assets.
 #[must_use]
 pub fn head() -> maud::Markup {
-    pack().head()
+    maud::html! {
+        (ASSETS.stylesheet_tag("carousel.css"))
+        (ASSETS.deferred_script_tag("carousel.js"))
+    }
 }
 
 /// The plugin. It serves the pack assets and adds the stories to the

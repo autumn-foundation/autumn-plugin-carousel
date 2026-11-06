@@ -3,13 +3,12 @@
 
 mod common;
 
-use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
 use autumn_plugin_carousel::{
-    CarouselConfig, CarouselText, DEFAULT_ROTATION_INTERVAL, Layout, Markers, PerView, Slide,
-    carousel,
+    CarouselConfig, CarouselText, DEFAULT_ROTATION_INTERVAL, InvalidCarouselId, Layout,
+    MAX_ROTATION_INTERVAL, Markers, PerView, Slide, carousel,
 };
 use autumn_web::form::FieldOptions;
 use common::{all, attr, one, render, text, text_slides};
@@ -59,7 +58,7 @@ fn ac03_ids_derive_from_the_root_id_and_do_not_repeat() {
         .auto_rotate();
     let html = render(&text_slides(4), &config);
     let track = one(&html, ".autumn-carousel-track");
-    assert_eq!(attr(track, "id"), Some("deals-track"));
+    assert_eq!(attr(track, "id"), Some("deals--track"));
     let ids: Vec<_> = all(&html, "[id]")
         .into_iter()
         .filter_map(|e| attr(e, "id"))
@@ -67,12 +66,12 @@ fn ac03_ids_derive_from_the_root_id_and_do_not_repeat() {
     let unique: BTreeSet<_> = ids.iter().collect();
     assert_eq!(ids.len(), unique.len(), "repeated id in {ids:?}");
     for n in 1..=4 {
-        one(&html, &format!("#deals-slide-{n}"));
+        one(&html, &format!("#deals--slide-{n}"));
     }
 }
 
 #[test]
-fn ac03_track_is_a_named_focusable_group() {
+fn ac19_track_is_a_named_focusable_group() {
     let html = render(&text_slides(2), &CarouselConfig::new("hero", "Featured"));
     let track = one(&html, ".autumn-carousel-track");
     assert_eq!(attr(track, "role"), Some("group"));
@@ -93,7 +92,7 @@ fn ac04_buttons_are_hidden_named_and_control_the_track() {
             attr(button, "hidden").is_some(),
             "{class} must start hidden"
         );
-        assert_eq!(attr(button, "aria-controls"), Some("hero-track"));
+        assert_eq!(attr(button, "aria-controls"), Some("hero--track"));
         assert_eq!(text(button), name);
     }
 }
@@ -134,7 +133,7 @@ fn ac05_rotation_button_comes_first_and_only_with_rotation() {
 }
 
 #[test]
-fn ac05_rotation_interval_has_a_floor() {
+fn d4_rotation_interval_has_a_floor() {
     let config =
         CarouselConfig::new("hero", "Featured").rotation_interval(Duration::from_millis(200));
     assert_eq!(config.rotation(), Some(Duration::from_secs(1)));
@@ -151,6 +150,17 @@ fn ac05_rotation_interval_has_a_floor() {
 }
 
 #[test]
+fn d4_rotation_interval_has_a_ceiling() {
+    let config = CarouselConfig::new("hero", "Featured").rotation_interval(Duration::MAX);
+    assert_eq!(config.rotation(), Some(MAX_ROTATION_INTERVAL));
+    let html = render(&text_slides(2), &config);
+    assert_eq!(
+        attr(one(&html, "section#hero"), "data-autumn-carousel-rotate"),
+        Some("2147483647")
+    );
+}
+
+#[test]
 fn ac06_markers_link_to_slides_and_mark_the_start() {
     let html = render(&text_slides(3), &CarouselConfig::new("hero", "Featured"));
     let group = one(&html, ".autumn-carousel-markers");
@@ -161,7 +171,7 @@ fn ac06_markers_link_to_slides_and_mark_the_start() {
     for (i, marker) in markers.iter().enumerate() {
         assert_eq!(
             attr(*marker, "href"),
-            Some(format!("#hero-slide-{}", i + 1).as_str())
+            Some(format!("#hero--slide-{}", i + 1).as_str())
         );
         assert_eq!(text(*marker), format!("{} of 3", i + 1));
         let current = attr(*marker, "aria-current");
@@ -182,12 +192,39 @@ fn ac06_default_markers_depend_on_the_layout() {
     let html = render(&text_slides(6), &numbers);
     let markers = all(&html, "a.autumn-carousel-marker--number");
     assert_eq!(markers.len(), 6);
-    let visible = one(&html, "a[href='#a-slide-2'] .autumn-carousel-marker-number");
+    let visible = one(
+        &html,
+        "a[href='#a--slide-2'] .autumn-carousel-marker-number",
+    );
     assert_eq!(text(visible), "2");
     assert_eq!(
         attr(visible, "aria-hidden"),
         Some("true"),
         "the visible digit must not repeat the hidden name"
+    );
+}
+
+#[test]
+fn ac06_a_number_marker_name_holds_its_digit() {
+    let slides = [
+        Slide::new(maud::html! {}).label("Spring"),
+        Slide::new(maud::html! {}).label("Summer"),
+    ];
+    let config = CarouselConfig::new("n", "Seasons").markers(Markers::Numbers);
+    let html = render(&slides, &config);
+    let marker = one(&html, "a[href='#n--slide-2']");
+    let number = one(
+        &html,
+        "a[href='#n--slide-2'] .autumn-carousel-marker-number",
+    );
+    assert_eq!(
+        attr(number, "aria-hidden"),
+        None,
+        "WCAG 2.5.3: the digit is in the name"
+    );
+    assert_eq!(
+        text(marker).split_whitespace().collect::<Vec<_>>(),
+        ["2", "Summer"]
     );
 }
 
@@ -239,7 +276,7 @@ fn ac08_images_have_size_alt_and_lazy_loading() {
     assert_eq!(attr(images[2], "loading"), Some("lazy"));
     let caption = one(
         &html,
-        "#g-slide-2 figure figcaption.autumn-carousel-caption",
+        "#g--slide-2 figure figcaption.autumn-carousel-caption",
     );
     assert_eq!(text(caption), "Second");
 
@@ -295,9 +332,9 @@ fn ac09_many_slides_have_a_live_region() {
 fn ac10_start_is_clamped_and_marked() {
     let html = render(&text_slides(3), &CarouselConfig::new("s", "Start").start(1));
     let start = one(&html, ".autumn-carousel-slide--start");
-    assert_eq!(attr(start, "id"), Some("s-slide-2"));
+    assert_eq!(attr(start, "id"), Some("s--slide-2"));
     let current = one(&html, "[aria-current='true']");
-    assert_eq!(attr(current, "href"), Some("#s-slide-2"));
+    assert_eq!(attr(current, "href"), Some("#s--slide-2"));
     assert_eq!(
         attr(one(&html, "section#s"), "data-autumn-carousel-start"),
         Some("1")
@@ -309,23 +346,23 @@ fn ac10_start_is_clamped_and_marked() {
     );
     assert_eq!(
         attr(one(&html, ".autumn-carousel-slide--start"), "id"),
-        Some("s-slide-3")
+        Some("s--slide-3")
     );
 }
 
 #[test]
 fn ac11_all_text_comes_from_carousel_text() {
-    let text_cfg = CarouselText {
-        carousel: Cow::Borrowed("karussell"),
-        slide: Cow::Borrowed("folie"),
-        track: Cow::Borrowed("Folien"),
-        markers: Cow::Borrowed("Folie wählen"),
-        previous: Cow::Borrowed("Zurück"),
-        next: Cow::Borrowed("Weiter"),
-        stop: Cow::Borrowed("Anhalten"),
-        start: Cow::Borrowed("Abspielen"),
-        position: Cow::Borrowed("{n} von {total}"),
-    };
+    let text_cfg = CarouselText::new()
+        .carousel("karussell")
+        .slide("folie")
+        .track("Folien")
+        .markers("Folie wählen")
+        .previous("Zurück")
+        .next("Weiter")
+        .stop("Anhalten")
+        .start("Abspielen")
+        .position("{n} von {total}")
+        .range("{first} bis {last} von {total}");
     assert_eq!(text_cfg.position_of(2, 5), "2 von 5");
     let config = CarouselConfig::new("k", "Neu").auto_rotate().text(text_cfg);
     let html = render(&text_slides(2), &config);
@@ -339,6 +376,7 @@ fn ac11_all_text_comes_from_carousel_text() {
         "Next slide",
         "automatic slide show",
         " of ",
+        " to ",
     ] {
         assert!(
             !markup.contains(english),
@@ -350,12 +388,14 @@ fn ac11_all_text_comes_from_carousel_text() {
         Some("karussell")
     );
     assert_eq!(
-        attr(one(&html, "#k-slide-1"), "aria-label"),
+        attr(one(&html, "#k--slide-1"), "aria-label"),
         Some("1 von 2")
     );
+    let status = one(&html, ".autumn-carousel-status");
+    assert_eq!(attr(status, "data-position"), Some("{n} von {total}"));
     assert_eq!(
-        attr(one(&html, ".autumn-carousel-status"), "data-position"),
-        Some("{n} von {total}")
+        attr(status, "data-range"),
+        Some("{first} bis {last} von {total}")
     );
 }
 
@@ -408,14 +448,46 @@ fn ac13_an_empty_id_panics() {
 
 #[test]
 #[should_panic(expected = "carousel id")]
-fn ac13_an_id_that_starts_with_a_digit_panics() {
-    let _ = CarouselConfig::new("1hero", "Bad");
+fn ac13_an_id_with_a_double_dash_panics() {
+    let _ = CarouselConfig::new("a--b", "Bad");
 }
 
 #[test]
 fn ac13_valid_ids_do_not_panic() {
-    for id in ["a", "hero", "Hero_2", "product-42-gallery"] {
+    for id in ["a", "hero", "Hero_2", "product-42-gallery", "42", "1hero"] {
         let _ = CarouselConfig::new(id, "Good");
+    }
+}
+
+#[test]
+fn ac13_try_new_returns_an_error() {
+    for id in ["", "a b", "a--b", "-a", "a-", "a.b", "<x>", "é"] {
+        let Err(error) = CarouselConfig::try_new(id, "Bad") else {
+            panic!("`{id}` must not be valid");
+        };
+        assert_eq!(error, InvalidCarouselId(id.to_owned()));
+        assert!(error.to_string().contains("carousel id"), "{error}");
+    }
+    assert!(CarouselConfig::try_new("ok-1", "Good").is_ok());
+}
+
+#[test]
+fn ac03_ids_of_two_carousels_do_not_collide() {
+    let ids = |id: &str| -> BTreeSet<String> {
+        let html = render(&text_slides(3), &CarouselConfig::new(id, "Ids"));
+        all(&html, "[id]")
+            .into_iter()
+            .filter_map(|e| attr(e, "id").map(str::to_owned))
+            .collect()
+    };
+    for (a, b) in [
+        ("a", "a-slide-1"),
+        ("x", "x-track"),
+        ("a", "a-slide"),
+        ("a", "a_track"),
+    ] {
+        let shared: Vec<_> = ids(a).intersection(&ids(b)).cloned().collect();
+        assert!(shared.is_empty(), "`{a}` and `{b}` share {shared:?}");
     }
 }
 
@@ -449,7 +521,7 @@ fn ac14_markup_is_csp_safe() {
 }
 
 #[test]
-fn rail_layout_sets_the_per_view_class() {
+fn d2_rail_layout_sets_the_per_view_class() {
     let html = render(
         &text_slides(5),
         &CarouselConfig::new("r", "Cards").rail(PerView::new(4)),
@@ -467,14 +539,14 @@ fn rail_layout_sets_the_per_view_class() {
 }
 
 #[test]
-fn per_view_is_clamped() {
+fn d2_per_view_is_clamped() {
     assert_eq!(PerView::new(0).get(), 1);
     assert_eq!(PerView::new(3).get(), 3);
     assert_eq!(PerView::new(200).get(), PerView::MAX);
 }
 
 #[test]
-fn controls_come_before_the_track_in_dom_order() {
+fn ac05_controls_come_before_the_track_in_dom_order() {
     let config = CarouselConfig::new("o", "Order").auto_rotate();
     let markup = render(&text_slides(3), &config).html();
     let at = |needle: &str| {
@@ -490,17 +562,17 @@ fn controls_come_before_the_track_in_dom_order() {
 }
 
 #[test]
-fn slide_content_is_kept() {
+fn ac02_slide_content_is_kept() {
     let slides = [Slide::new(
         maud::html! { h3 { "Title" } a href="/go" { "Go" } },
     )];
     let html = render(&slides, &CarouselConfig::new("c", "Content"));
-    assert_eq!(text(one(&html, "#c-slide-1 h3")), "Title");
-    assert_eq!(attr(one(&html, "#c-slide-1 a"), "href"), Some("/go"));
+    assert_eq!(text(one(&html, "#c--slide-1 h3")), "Title");
+    assert_eq!(attr(one(&html, "#c--slide-1 a"), "href"), Some("/go"));
 }
 
 #[test]
-fn text_is_escaped() {
+fn ac14_text_is_escaped() {
     let slides = [
         Slide::new(maud::html! {}).label("<b>bold</b>"),
         Slide::image("/a.jpg?x=1&y=2", "\"quoted\"", 1, 1),
@@ -518,9 +590,26 @@ fn text_is_escaped() {
 }
 
 #[test]
-fn a_caption_on_a_markup_slide_is_ignored() {
+fn ac08_a_caption_on_a_markup_slide_is_ignored() {
     let slides = [Slide::new(maud::html! { p { "Text" } }).caption(maud::html! { "Lost" })];
     let html = render(&slides, &CarouselConfig::new("m", "Markup"));
     assert!(all(&html, "figcaption").is_empty());
     assert!(!html.html().contains("Lost"));
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "carousel needs a name")]
+fn ac01_an_empty_label_panics_in_a_debug_build() {
+    let _ = render(&text_slides(2), &CarouselConfig::new("x", " "));
+}
+
+#[test]
+fn ac01_an_empty_label_is_allowed_with_labelled_by() {
+    let config = CarouselConfig::new("x", "").labelled_by("heading");
+    let html = render(&text_slides(2), &config);
+    assert_eq!(
+        attr(one(&html, "section#x"), "aria-labelledby"),
+        Some("heading")
+    );
 }

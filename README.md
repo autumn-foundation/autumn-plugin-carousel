@@ -9,8 +9,8 @@ An accessible carousel widget pack for [Autumn](https://github.com/autumn-founda
 - It works in right-to-left text and in forced colors.
 
 Before you add a carousel, read [Use carousels with care](docs/research.md#1-use-carousels-with-care).
-A carousel helps for product images, card rails and known content. It
-does not help for a home page hero.
+Use a carousel for product images, card rails and known content. Do not
+use it for a home page hero.
 
 ## Install
 
@@ -55,8 +55,12 @@ let slides = [
 let markup = carousel(&slides, &CarouselConfig::new("tour", "Product tour"), &FieldOptions::new());
 ```
 
-Give each carousel on a page a different id. Do not put the word
-"carousel" in the label. Screen readers say it.
+Give each carousel on a page a different id. An id has ASCII letters,
+digits, `-` and `_`, with no `--`. Use `CarouselConfig::try_new` for an id
+from data.
+
+Do not put the word "carousel" in the label. The role name already gives
+this word.
 
 ### Layouts
 
@@ -82,7 +86,7 @@ Slide::image("/img/chair.jpg", "A red chair, front view", 800, 600)
     .thumbnail("/img/chair-small.jpg")
 ```
 
-The start image loads at once. The other images load lazily. Add
+The start image loads immediately. The other images load lazily. Add
 `.priority()` to the config when the carousel is the largest item at the
 top of the page.
 
@@ -92,13 +96,13 @@ top of the page.
 |---|---|
 | `.labelled_by("heading-id")` | Use a visible heading as the name. |
 | `.start(2)` | Show slide 3 first. |
-| `.rewind()` | Next on the last slide goes to the first slide. |
+| `.rewind()` | At an end, previous and next go to the other end. |
 | `.auto_rotate()` | Rotate every 6 s. |
-| `.rotation_interval(Duration::from_secs(8))` | Rotate every 8 s. |
-| `.text(CarouselText { .. })` | Translate all text. |
+| `.rotation_interval(Duration::from_secs(8))` | Rotate every 8 s. The range is 1 s to about 24.8 days. |
+| `.text(CarouselText::new().previous("Zurück").next("Weiter"))` | Translate the text. |
 
 Each `Slide` can have `.label("Spring sale")`. The label replaces the
-"N of M" name.
+"N of M" name. A number marker keeps its digit in the name.
 
 ## Automatic rotation
 
@@ -107,20 +111,25 @@ Rotation is off by default. When you turn it on:
 - A rotation button is the first control.
 - Focus in the carousel stops rotation. Focus on the rotation button does not.
 - A click on previous, next or a marker stops rotation.
+- A scroll of the track by the user stops rotation.
 - Mouse hover pauses rotation.
 - A hidden page pauses rotation.
 - Reduced motion starts the carousel stopped.
 - Rotation does not move focus. It does not speak.
 
+After the user presses Start, focus in the carousel pauses rotation until
+focus goes out. Hover does not pause it. Only the rotation button or a
+slide move stops it.
+
 ## Keyboard
 
-The carousel has no key code of its own.
+The pack adds no key bindings.
 
 | Key | Effect |
 |---|---|
 | Tab | Moves to the rotation, previous, marker and next controls, then into the track. |
 | Enter, Space | Activates the focused button or link. |
-| Arrow keys on the track | The browser scrolls the track. Snap stops at each slide. |
+| Arrow keys on the track | The browser scrolls the track. In a slideshow, snap stops at each slide. In a rail, snap stops near a card. |
 
 ## Without JavaScript
 
@@ -129,10 +138,17 @@ The carousel has no key code of its own.
 - Each marker is a link to its slide.
 - `aria-current` stays on the start marker.
 
+## Screen readers
+
+- After a user move, a hidden live region speaks "2 of 4". A rail speaks
+  the cards in view, for example "4 to 6 of 8".
+- Rotation and a free scroll do not speak.
+- When a slide that holds focus goes out of view, focus goes to the track.
+
 ## Events
 
-The root sends `autumn-carousel:change` when the current slide changes.
-`event.detail.index` is the new index, from 0.
+The root sends `autumn-carousel:change` one time after each move, when the
+scroll stops. `event.detail.index` is the new index, from 0.
 
 ```js
 document.addEventListener('autumn-carousel:change', (e) => {
@@ -142,13 +158,14 @@ document.addEventListener('autumn-carousel:change', (e) => {
 
 ## htmx
 
-A carousel that htmx swaps in starts at once. The pack listens for
+The pack sets up each carousel that htmx adds. It listens for
 `autumn:init`. For a long rail, put the core `pagination` widget under the
 carousel and swap the carousel.
 
 ## Styling
 
-Change these properties on `.autumn-carousel-root` in your own stylesheet:
+Change these properties on `.autumn-carousel-root` in your own stylesheet.
+Load your stylesheet after `head()`, or use a more specific selector:
 
 | Property | Default |
 |---|---|

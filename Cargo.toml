@@ -9,11 +9,12 @@ repository = "https://github.com/autumn-foundation/autumn-plugin-carousel"
 readme = "README.md"
 keywords = ["autumn", "carousel", "widget", "accessibility", "htmx"]
 categories = ["web-programming", "accessibility"]
-include = ["src/**", "docs/**", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["/src/**", "/README.md", "/LICENSE", "/CHANGELOG.md"]
 
 [dependencies]
-autumn-web = { version = "0.10", default-features = false, features = ["maud", "htmx"] }
+autumn-web = { version = "0.10", default-features = false, features = ["maud"] }
 maud = "0.27"
+thiserror = "2"
 
 [dev-dependencies]
 proptest = "1"
@@ -23,7 +24,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 
 [features]
 # The browser tests. They need Chromium.
-system-tests = ["autumn-web/system-tests"]
+system-tests = ["autumn-web/system-tests", "autumn-web/htmx"]
 
 [lints.rust]
 unsafe_code = "forbid"

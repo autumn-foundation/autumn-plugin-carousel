@@ -31,6 +31,9 @@
     scrollbar-width: thin;
     scrollbar-color: var(--control-border) transparent;
     border-radius: var(--radius-md);
+    /* Room for the focus ring of slide content. */
+    padding: var(--space-1);
+    scroll-padding-inline: var(--space-1);
 }
 
 .autumn-carousel-track:focus-visible {
@@ -129,7 +132,8 @@
     cursor: default;
 }
 
-/* A class `display` value beats the `hidden` attribute. Keep it hidden. */
+/* A `display` value in a class rule overrides `hidden`. This rule keeps
+   hidden elements hidden. */
 .autumn-carousel-root [hidden] {
     display: none;
 }
@@ -247,7 +251,15 @@
         background: Highlight;
     }
 
+    /* All thumbnails get a visible border here. Only the current one
+       gets the color and an outline. */
+    .autumn-carousel-marker--thumbnail {
+        border-color: Canvas;
+    }
+
     .autumn-carousel-marker--thumbnail[aria-current="true"] {
         border-color: Highlight;
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
     }
 }

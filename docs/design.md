@@ -53,14 +53,14 @@ Question: "How can we make the worst carousel?" Each answer gives a rule.
 | Make cards in a rail unreachable. | Rail cards are never `inert`. |
 | Name each slide "slide". | The slide name is a label or "N of M". |
 | Tiny dots. | Each marker target is 24 × 24 px or larger. Buttons are 44 × 44 px. |
-| Show the current dot by color only. | The current dot is larger and has a border. |
+| Show the current dot by color only. | The current dot is wider and filled. |
 | Move focus when the slide changes. | Buttons do not move focus. Rotation does not move focus. |
 | Scroll the page during rotation. | JS scrolls only the track. |
 | Announce each automatic change. | The live region speaks only after a user action. |
 | Use `style` attributes. | Classes set the layout. |
 | Hard-code English. | `CarouselText` holds all text. |
 | Break in right-to-left text. | Logical CSS. JS uses edge deltas, not `scrollLeft` signs. |
-| Lose the current dot in forced colors. | A border shows the current dot. |
+| Lose the current dot in forced colors. | The current marker uses the `Highlight` system color. A thumbnail also gets an outline. |
 | Write arrow-key code. | No key code. The browser scrolls the focused track. |
 | Use a CSS-only carousel. | Do not use `::scroll-button` or `::scroll-marker`. |
 | Load all images at once. | Images after the start slide load lazily. |
@@ -94,8 +94,8 @@ fails an audit.
   and Smashing accept this order. We document it.
 
 **Yellow hat (benefits).**
-Native scroll gives touch, trackpad, momentum and right-to-left support
-free. The JS is small. All content shows with JS off. htmx swaps work
+The browser gives touch, trackpad, momentum and right-to-left scroll. The
+pack needs no code for them. The JS is small. All content shows with JS off. htmx swaps work
 through `autumn:init`.
 
 **Green hat (new ideas).**
@@ -157,10 +157,10 @@ section#ID.autumn-carousel-root  aria-roledescription=carousel  aria-label
     button.autumn-carousel-rotate  hidden          (rotation only)
     button.autumn-carousel-prev    hidden
     div.autumn-carousel-markers    role=group aria-label   (markers only)
-      a.autumn-carousel-marker href=#ID-slide-N [aria-current=true]
+      a.autumn-carousel-marker href=#ID--slide-N [aria-current=true]
     button.autumn-carousel-next    hidden
-  div#ID-track.autumn-carousel-track  role=group aria-label tabindex=0
-    div#ID-slide-N.autumn-carousel-slide  role=group aria-roledescription=slide aria-label
+  div#ID--track.autumn-carousel-track  role=group aria-label tabindex=0
+    div#ID--slide-N.autumn-carousel-slide  role=group aria-roledescription=slide aria-label
   div.autumn-visually-hidden  aria-live=polite aria-atomic=true
 ```
 
@@ -172,21 +172,27 @@ One slide: no bar, no live region. No slides: no markup.
 - It removes `hidden` from the buttons.
 - Scroll events update the current slide, the markers, the disabled
   buttons and `inert`.
+- A step starts from the requested slide, not from the scroll position.
+  Thus quick clicks do not lose a step.
+- When a slide that holds focus becomes `inert`, focus goes to the track.
+- A scroll that the pack did not start is a user move.
 - Previous and next move one slide (slideshow) or one view (rail). At an
   end, the button has `aria-disabled="true"`, unless `rewind` is set.
 - A marker click scrolls the track. It does not change the URL.
 - JS scrolls with `scrollTo` to an absolute position. A relative
   `scrollBy` stops at the first snap point. See
   [ADR 0001](adr/0001-native-scroll-snap-track.md).
-- A user move writes "N of M" to the live region.
-- Each change sends `autumn-carousel:change` with `detail.index`.
+- After a user move, when the scroll stops, the live region speaks "N of
+  M". A rail speaks the cards in view: "4 to 6 of 8".
+- Each move sends one `autumn-carousel:change` with `detail.index`, when
+  the scroll stops.
 
 ### 7.3 Rotation states
 
 | State | Timer | Button text | Enters when |
 |---|---|---|---|
 | `playing` | runs | Stop | set-up (no reduced motion); user presses Start |
-| `paused` | stops | Stop | mouse is on the carousel; page is hidden (only from `playing`) |
+| `paused` | stops | Stop | page is hidden; mouse is on the carousel (not after a user start); focus is in the carousel (after a user start). Only from `playing`. |
 | `stopped` | stops | Start | reduced motion at set-up; user presses Stop; focus enters the carousel (not the rotation button); user moves a slide |
 
 Rules:
@@ -194,17 +200,20 @@ Rules:
 - `paused` goes back to `playing` when the cause ends.
 - Focus on the rotation button does not stop rotation. Else a mouse click
   on Stop gives focus (stop), then a click (start), and rotation goes on.
-- A pointer, wheel or key on the track is a user move.
-- After the user presses Start, focus and hover do not stop rotation.
-  Only the button and a user move stop it.
+- A scroll of the track that the pack did not start is a user move. A
+  vertical wheel or a Tab key is not.
+- After the user presses Start, focus in the carousel pauses rotation
+  until focus goes out. Rotation does not move content away from the
+  user. Hover does not pause it, as in the APG examples. Only the button
+  and a user move stop it.
 - Rotation wraps to the first slide. It does not speak.
-- A carousel that leaves the DOM stops its timer.
+- A carousel that leaves the DOM stops its timer and shows the Start
+  label.
 
 ## 8. Tests
 
 | Kind | Where | Runs in |
 |---|---|---|
-| Markup unit tests | `src/*.rs` | `cargo test` |
 | Public API tests | `tests/markup.rs` | `cargo test` |
 | Property tests | `tests/properties.rs` | `cargo test` |
 | Static conformance | `tests/conformance.rs` | `cargo test` |
@@ -218,7 +227,8 @@ Rules:
   from `aria-label` or `aria-labelledby`.
 - AC-02: Each slide is `role="group"` with `aria-roledescription` and a
   name: its label, else "N of M".
-- AC-03: IDs are `ID-track` and `ID-slide-N`. No ID repeats.
+- AC-03: IDs are `ID--track` and `ID--slide-N`. No ID repeats, also
+  across two carousels.
 - AC-04: The buttons have `hidden`, `type="button"`, a text name and
   `aria-controls` to the track.
 - AC-05: The rotation button comes first in DOM order. It exists only
@@ -234,7 +244,8 @@ Rules:
 - AC-10: `start` is clamped. The start slide has the start class.
 - AC-11: All text comes from `CarouselText`.
 - AC-12: The root gets the app `data-*` and `hx-*` passthrough.
-- AC-13: An invalid ID panics with a clear message.
+- AC-13: `try_new` returns `InvalidCarouselId` for an invalid ID. `new`
+  panics with the same message.
 - AC-14: No `style` attribute, no inline script and no `on*` attribute.
 
 ### Pack and plugin
@@ -265,7 +276,8 @@ Rules:
 - AC-28: Reduced motion starts rotation stopped.
 - AC-29: A carousel swapped in by htmx starts through `autumn:init`.
 - AC-30: In right-to-left text, next moves to the next slide.
-- AC-31: `autumn-carousel:change` fires with the new index.
+- AC-31: `autumn-carousel:change` fires one time for each move, with the
+  new index.
 - AC-32: A removed carousel stops its timer.
 
 ### Quality
@@ -275,6 +287,22 @@ Rules:
 - AC-34: CI runs format, lint, tests, browser tests and coverage.
 - AC-35: The README and docs use short ASD-STE100 sentences.
 - AC-36: Line coverage of the Rust code is 90% or more.
+
+### Added after the review
+
+- AC-37: Quick clicks step from the requested slide.
+- AC-38: Focus does not go to `<body>` when its slide becomes `inert`.
+  After a user start, focus in the carousel pauses rotation.
+- AC-39: A rail makes its last cards current and speaks the cards in view.
+- AC-40: A user scroll of the track stops rotation. A vertical wheel does
+  not.
+- AC-41: The rotation interval is clamped to 2^31 − 1 ms.
+- AC-42: A number marker keeps its digit in its name (WCAG 2.5.3).
+- AC-43: A hidden page pauses rotation.
+- AC-44: The start slide shows with JS on, also when the carousel shows
+  late. A deep link wins over the start slide.
+- AC-45: The carousel sets up without `autumn-widgets.js`.
+- AC-46: The track has room for the focus ring of slide content.
 
 ## 10. Evidence
 

@@ -32,8 +32,8 @@ Use a native scroll-snap track (option 3).
 - The browser gives momentum, snap and right-to-left support.
 - A transform engine writes `style` attributes or hides content until JS
   runs.
-- CSS-only carousels work in Chromium only, and experts found faults in
-  their accessibility.
+- CSS-only carousels work in Chromium only. Accessibility experts
+  reported problems with them.
 
 ## Consequences
 

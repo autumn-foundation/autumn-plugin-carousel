@@ -41,7 +41,7 @@ Source: [APG carousel](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/).
   It has no `aria-pressed`.
 - Focus in the carousel stops rotation. Rotation does not start again
   until the user starts it. Mouse hover pauses rotation.
-- `prefers-reduced-motion: reduce` starts the carousel paused.
+- `prefers-reduced-motion: reduce` starts rotation stopped.
   [APG example JS](https://www.w3.org/WAI/content-assets/wai-aria-practices/patterns/carousel/examples/js/carousel-prev-next.js)
 - Do not announce slide changes during rotation.
 
@@ -82,7 +82,8 @@ Source: [APG carousel](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/).
 ### 2.5 CSS-only carousels
 
 - `::scroll-button()` and `::scroll-marker` are in Chromium only. Their
-  roles are not in a specification. Experts found faults.
+  roles are not in a specification. Accessibility experts reported
+  problems with them.
   [Soueidan](https://sarasoueidan.com/blog/css-carousels-accessibility),
   [Roselli](https://adrianroselli.com/2025/05/my-request-to-google-on-accessibility.html)
 - Do not use them for semantics.

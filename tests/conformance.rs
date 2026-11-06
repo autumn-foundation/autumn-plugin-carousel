@@ -69,12 +69,24 @@ fn ac17_the_plugin_serves_the_assets() {
 
 #[test]
 fn ac17_the_plugin_declares_its_contract() {
+    use autumn_web::plugin_contract::{AUTUMN_WEB_VERSION, ContractVerdict, evaluate};
     let plugin = CarouselPlugin::new();
     assert_eq!(plugin.name(), "autumn-plugin-carousel");
     let contract = plugin.contract().unwrap_or_else(|| panic!("no contract"));
-    let report = format!("{contract:?}");
-    assert!(report.contains("autumn-plugin-carousel"), "{report}");
-    assert!(report.contains("0.10"), "{report}");
+    assert!(
+        matches!(
+            evaluate(&contract, AUTUMN_WEB_VERSION),
+            ContractVerdict::Compatible
+        ),
+        "the contract must admit autumn-web {AUTUMN_WEB_VERSION}"
+    );
+    assert!(
+        matches!(
+            evaluate(&contract, "0.11.0"),
+            ContractVerdict::Incompatible(_)
+        ),
+        "the contract must not admit the next minor series"
+    );
 }
 
 #[test]

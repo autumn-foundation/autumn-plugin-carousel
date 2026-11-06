@@ -17,6 +17,11 @@ use crate::slide::{Content, Slide};
 /// The root `<section>` gets the app `data-*` and `hx-*` passthrough from
 /// `options`. No slides give no markup. One slide gives no controls.
 ///
+/// # Panics
+///
+/// In a debug build, panics when the label is empty and `labelled_by` is
+/// not set: the carousel then has no name.
+///
 /// ```rust
 /// use autumn_plugin_carousel::{CarouselConfig, Slide, carousel};
 /// use autumn_web::form::FieldOptions;
@@ -40,6 +45,10 @@ pub fn carousel(
     let Some(plan) = Plan::new(slides, config) else {
         return html! {};
     };
+    debug_assert!(
+        config.labelled_by.is_some() || !config.label.trim().is_empty(),
+        "the carousel needs a name: give a label or use `labelled_by`"
+    );
     let class = root_class(config.layout);
     let start_index = plan.start.to_string();
     let rotate_ms = config
@@ -50,7 +59,7 @@ pub fn carousel(
     let mut attrs: Vec<(&str, &str)> = vec![
         ("id", config.id),
         ("class", &class),
-        ("aria-roledescription", &config.text.carousel),
+        ("aria-roledescription", config.text.carousel),
     ];
     match config.labelled_by {
         Some(heading) => attrs.push(("aria-labelledby", heading)),
@@ -72,7 +81,8 @@ pub fn carousel(
         (track(&plan))
         @if plan.many {
             div class="autumn-visually-hidden autumn-carousel-status" aria-live="polite"
-                aria-atomic="true" data-position=(plan.config.text.position) {}
+                aria-atomic="true" data-position=(plan.config.text.position)
+                data-range=(plan.config.text.range) {}
         }
     };
     element("section", &attrs, options, body)
@@ -122,7 +132,7 @@ impl<'p, 'a> Plan<'p, 'a> {
                 Markers::None
             },
             names,
-            track_id: format!("{}-track", config.id),
+            track_id: format!("{}--track", config.id),
         })
     }
 }
@@ -140,7 +150,7 @@ fn bar(plan: &Plan<'_, '_>) -> Markup {
                     span class="autumn-visually-hidden autumn-carousel-label" { (text.stop) }
                 }
             }
-            (step_button("autumn-carousel-prev", Icon::Previous, &text.previous, &plan.track_id))
+            (step_button("autumn-carousel-prev", Icon::Previous, text.previous, &plan.track_id))
             @if plan.markers != Markers::None {
                 div class="autumn-carousel-markers" role="group" aria-label=(text.markers) {
                     @for (i, slide) in plan.slides.iter().enumerate() {
@@ -148,7 +158,7 @@ fn bar(plan: &Plan<'_, '_>) -> Markup {
                     }
                 }
             }
-            (step_button("autumn-carousel-next", Icon::Next, &text.next, &plan.track_id))
+            (step_button("autumn-carousel-next", Icon::Next, text.next, &plan.track_id))
         }
     }
 }
@@ -184,7 +194,7 @@ fn track(plan: &Plan<'_, '_>) -> Markup {
 
 /// The id of slide `i` (from 0). The number in the id starts at 1.
 fn slide_id(id: &str, i: usize) -> String {
-    format!("{id}-slide-{}", i + 1)
+    format!("{id}--slide-{}", i + 1)
 }
 
 /// The root classes for `layout`.
@@ -215,7 +225,14 @@ fn marker(plan: &Plan<'_, '_>, i: usize, slide: &Slide<'_>) -> Markup {
     html! {
         a class=(class) href=(href) aria-current=[(i == plan.start).then_some("true")] {
             @if kind == Markers::Numbers {
-                span class="autumn-carousel-marker-number" aria-hidden="true" { (i + 1) }
+                // WCAG 2.5.3: a slide label hides the digit from the name, so
+                // the digit then stays in the name.
+                @if slide.label.is_some() {
+                    span class="autumn-carousel-marker-number" { (i + 1) }
+                    " "
+                } @else {
+                    span class="autumn-carousel-marker-number" aria-hidden="true" { (i + 1) }
+                }
             }
             @if kind == Markers::Thumbnails {
                 @if let Some((src, (width, height))) = thumbnail {
