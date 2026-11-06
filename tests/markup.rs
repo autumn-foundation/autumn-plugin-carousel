@@ -516,3 +516,11 @@ fn text_is_escaped() {
     assert!(markup.contains("&lt;script&gt;"), "{markup}");
     assert!(markup.contains("x=1&amp;y=2"), "{markup}");
 }
+
+#[test]
+fn a_caption_on_a_markup_slide_is_ignored() {
+    let slides = [Slide::new(maud::html! { p { "Text" } }).caption(maud::html! { "Lost" })];
+    let html = render(&slides, &CarouselConfig::new("m", "Markup"));
+    assert!(all(&html, "figcaption").is_empty());
+    assert!(!html.html().contains("Lost"));
+}

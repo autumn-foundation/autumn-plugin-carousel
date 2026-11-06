@@ -37,23 +37,20 @@ pub fn carousel(
     config: &CarouselConfig<'_>,
     options: &FieldOptions<'_>,
 ) -> Markup {
-    let total = slides.len();
-    if total == 0 {
+    let Some(plan) = Plan::new(slides, config) else {
         return html! {};
-    }
-    let id = config.id;
-    let start = config.start.min(total - 1);
-    let many = total > 1;
-    let rotation = config.rotation.filter(|_| many);
-    let rotate_ms = rotation.map(|interval| interval.as_millis().to_string());
-    let start_index = start.to_string();
+    };
     let class = root_class(config.layout);
-    let text = &config.text;
+    let start_index = plan.start.to_string();
+    let rotate_ms = config
+        .rotation
+        .filter(|_| plan.rotation)
+        .map(|interval| interval.as_millis().to_string());
 
     let mut attrs: Vec<(&str, &str)> = vec![
-        ("id", id),
+        ("id", config.id),
         ("class", &class),
-        ("aria-roledescription", &text.carousel),
+        ("aria-roledescription", &config.text.carousel),
     ];
     match config.labelled_by {
         Some(heading) => attrs.push(("aria-labelledby", heading)),
@@ -68,66 +65,126 @@ pub fn carousel(
         attrs.push(("data-autumn-carousel-rewind", ""));
     }
 
-    let names: Vec<String> = slides
-        .iter()
-        .enumerate()
-        .map(|(i, slide)| {
-            slide
-                .label
-                .map_or_else(|| text.position_of(i + 1, total), str::to_owned)
-        })
-        .collect();
-    let track_id = format!("{id}-track");
-    let markers = if many {
-        config.marker_kind()
-    } else {
-        Markers::None
-    };
-
     let body = html! {
-        @if many {
-            div class="autumn-carousel-bar" {
-                @if rotation.is_some() {
-                    button type="button" class="autumn-carousel-rotate" aria-controls=(track_id)
-                        data-start-label=(text.start) data-stop-label=(text.stop) hidden {
-                        (icon(Icon::Pause))
-                        (icon(Icon::Play))
-                        span class="autumn-visually-hidden autumn-carousel-label" { (text.stop) }
-                    }
-                }
-                button type="button" class="autumn-carousel-prev" aria-controls=(track_id) hidden {
-                    (icon(Icon::Previous))
-                    span class="autumn-visually-hidden" { (text.previous) }
-                }
-                @if markers != Markers::None {
-                    div class="autumn-carousel-markers" role="group" aria-label=(text.markers) {
-                        @for (i, slide) in slides.iter().enumerate() {
-                            (marker(id, markers, i, i == start, &names[i], slide))
-                        }
-                    }
-                }
-                button type="button" class="autumn-carousel-next" aria-controls=(track_id) hidden {
-                    (icon(Icon::Next))
-                    span class="autumn-visually-hidden" { (text.next) }
-                }
-            }
+        @if plan.many {
+            (bar(&plan))
         }
-        div id=(track_id) class="autumn-carousel-track" role="group" aria-label=(text.track)
-            tabindex="0" {
-            @for (i, slide) in slides.iter().enumerate() {
-                div id=(format!("{id}-slide-{}", i + 1))
-                    class=(if i == start { "autumn-carousel-slide autumn-carousel-slide--start" } else { "autumn-carousel-slide" })
-                    role="group" aria-roledescription=(text.slide) aria-label=(names[i]) {
-                    (slide_content(slide, i == start, config.priority))
-                }
-            }
-        }
-        @if many {
+        (track(&plan))
+        @if plan.many {
             div class="autumn-visually-hidden autumn-carousel-status" aria-live="polite"
-                aria-atomic="true" data-position=(text.position) {}
+                aria-atomic="true" data-position=(plan.config.text.position) {}
         }
     };
     element("section", &attrs, options, body)
+}
+
+/// The values that each part of the markup needs.
+struct Plan<'p, 'a> {
+    slides: &'p [Slide<'a>],
+    config: &'p CarouselConfig<'a>,
+    /// The start slide index, clamped.
+    start: usize,
+    /// Two or more slides: the carousel has controls.
+    many: bool,
+    /// Rotation is on and the carousel has controls.
+    rotation: bool,
+    /// The markers, or `None` for one slide.
+    markers: Markers,
+    /// The accessible name of each slide.
+    names: Vec<String>,
+    track_id: String,
+}
+
+impl<'p, 'a> Plan<'p, 'a> {
+    /// `None` when there are no slides.
+    fn new(slides: &'p [Slide<'a>], config: &'p CarouselConfig<'a>) -> Option<Self> {
+        let last = slides.len().checked_sub(1)?;
+        let many = last > 0;
+        let names = slides
+            .iter()
+            .enumerate()
+            .map(|(i, slide)| {
+                slide.label.map_or_else(
+                    || config.text.position_of(i + 1, slides.len()),
+                    str::to_owned,
+                )
+            })
+            .collect();
+        Some(Self {
+            slides,
+            config,
+            start: config.start.min(last),
+            many,
+            rotation: many && config.rotation.is_some(),
+            markers: if many {
+                config.marker_kind()
+            } else {
+                Markers::None
+            },
+            names,
+            track_id: format!("{}-track", config.id),
+        })
+    }
+}
+
+/// The controls: rotation, previous, markers and next, in DOM order.
+fn bar(plan: &Plan<'_, '_>) -> Markup {
+    let text = &plan.config.text;
+    html! {
+        div class="autumn-carousel-bar" {
+            @if plan.rotation {
+                button type="button" class="autumn-carousel-rotate" aria-controls=(plan.track_id)
+                    data-start-label=(text.start) data-stop-label=(text.stop) hidden {
+                    (icon(Icon::Pause))
+                    (icon(Icon::Play))
+                    span class="autumn-visually-hidden autumn-carousel-label" { (text.stop) }
+                }
+            }
+            (step_button("autumn-carousel-prev", Icon::Previous, &text.previous, &plan.track_id))
+            @if plan.markers != Markers::None {
+                div class="autumn-carousel-markers" role="group" aria-label=(text.markers) {
+                    @for (i, slide) in plan.slides.iter().enumerate() {
+                        (marker(plan, i, slide))
+                    }
+                }
+            }
+            (step_button("autumn-carousel-next", Icon::Next, &text.next, &plan.track_id))
+        }
+    }
+}
+
+/// A previous or next button. JS removes `hidden`.
+fn step_button(class: &str, icon_kind: Icon, name: &str, track_id: &str) -> Markup {
+    html! {
+        button type="button" class=(class) aria-controls=(track_id) hidden {
+            (icon(icon_kind))
+            span class="autumn-visually-hidden" { (name) }
+        }
+    }
+}
+
+/// The track and its slides.
+fn track(plan: &Plan<'_, '_>) -> Markup {
+    let config = plan.config;
+    html! {
+        div id=(plan.track_id) class="autumn-carousel-track" role="group"
+            aria-label=(config.text.track) tabindex="0" {
+            @for (i, slide) in plan.slides.iter().enumerate() {
+                @let start = i == plan.start;
+                div id=(slide_id(config.id, i))
+                    class=(if start { "autumn-carousel-slide autumn-carousel-slide--start" } else { "autumn-carousel-slide" })
+                    role="group" aria-roledescription=(config.text.slide)
+                    aria-label=(plan.names[i]) {
+                    (slide_content(slide, start, config.priority))
+                }
+            }
+        }
+    }
+}
+
+/// The id of slide `i` (from 0). The number in the id starts at 1.
+fn slide_id(id: &str, i: usize) -> String {
+    format!("{id}-slide-{}", i + 1)
 }
 
 /// The root classes for `layout`.
@@ -141,16 +198,10 @@ fn root_class(layout: Layout) -> String {
     }
 }
 
-/// One marker link. `n` is the slide index from 0.
-fn marker(
-    id: &str,
-    kind: Markers,
-    n: usize,
-    current: bool,
-    name: &str,
-    slide: &Slide<'_>,
-) -> Markup {
-    let href = format!("#{id}-slide-{}", n + 1);
+/// One marker link to slide `i` (from 0).
+fn marker(plan: &Plan<'_, '_>, i: usize, slide: &Slide<'_>) -> Markup {
+    let kind = plan.markers;
+    let href = format!("#{}", slide_id(plan.config.id, i));
     let class = match kind {
         Markers::Numbers => "autumn-carousel-marker autumn-carousel-marker--number",
         Markers::Thumbnails => "autumn-carousel-marker autumn-carousel-marker--thumbnail",
@@ -162,9 +213,9 @@ fn marker(
         (Content::Markup(_), None) => None,
     };
     html! {
-        a class=(class) href=(href) aria-current=[current.then_some("true")] {
+        a class=(class) href=(href) aria-current=[(i == plan.start).then_some("true")] {
             @if kind == Markers::Numbers {
-                span class="autumn-carousel-marker-number" aria-hidden="true" { (n + 1) }
+                span class="autumn-carousel-marker-number" aria-hidden="true" { (i + 1) }
             }
             @if kind == Markers::Thumbnails {
                 @if let Some((src, (width, height))) = thumbnail {
@@ -172,7 +223,7 @@ fn marker(
                         height=[height] loading="lazy" decoding="async";
                 }
             }
-            span class="autumn-visually-hidden" { (name) }
+            span class="autumn-visually-hidden" { (plan.names[i]) }
         }
     }
 }

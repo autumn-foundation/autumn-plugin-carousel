@@ -114,7 +114,7 @@ criterion to its evidence.
 
 | # | Decision | Reason |
 |---|---|---|
-| D1 | Native scroll-snap track. No JS transform engine. | Works with JS off. Free touch and RTL. Research §3.2. |
+| D1 | Native scroll-snap track. No JS transform engine. | Works with JS off. Free touch and RTL. Research §3.2. [ADR 0001](adr/0001-native-scroll-snap-track.md). |
 | D2 | Two layouts: `Slideshow` (default) and `Rail(PerView)`. | Different evidence for each use. Research §1. |
 | D3 | Markers are links in a named group. Kinds: `None`, `Dots`, `Numbers`, `Thumbnails`. | Links work with JS off. Tabs need hidden panels. Research §2.5. |
 | D4 | Rotation is an opt-in. Default interval 6 s. Interval floor 1 s. | Research §1, §2.1. |
@@ -175,6 +175,9 @@ One slide: no bar, no live region. No slides: no markup.
 - Previous and next move one slide (slideshow) or one view (rail). At an
   end, the button has `aria-disabled="true"`, unless `rewind` is set.
 - A marker click scrolls the track. It does not change the URL.
+- JS scrolls with `scrollTo` to an absolute position. A relative
+  `scrollBy` stops at the first snap point. See
+  [ADR 0001](adr/0001-native-scroll-snap-track.md).
 - A user move writes "N of M" to the live region.
 - Each change sends `autumn-carousel:change` with `detail.index`.
 
@@ -184,11 +187,14 @@ One slide: no bar, no live region. No slides: no markup.
 |---|---|---|---|
 | `playing` | runs | Stop | set-up (no reduced motion); user presses Start |
 | `paused` | stops | Stop | mouse is on the carousel; page is hidden (only from `playing`) |
-| `stopped` | stops | Start | reduced motion at set-up; user presses Stop; focus enters the carousel; user moves a slide |
+| `stopped` | stops | Start | reduced motion at set-up; user presses Stop; focus enters the carousel (not the rotation button); user moves a slide |
 
 Rules:
 
 - `paused` goes back to `playing` when the cause ends.
+- Focus on the rotation button does not stop rotation. Else a mouse click
+  on Stop gives focus (stop), then a click (start), and rotation goes on.
+- A pointer, wheel or key on the track is a user move.
 - After the user presses Start, focus and hover do not stop rotation.
   Only the button and a user move stop it.
 - Rotation wraps to the first slide. It does not speak.

@@ -84,3 +84,11 @@ fn ac17_installing_twice_is_safe() {
         .plugin(CarouselPlugin::new());
     assert!(builder.plugin_route_infos().is_ok());
 }
+
+#[test]
+fn ac17_head_links_the_pack_assets() {
+    assert_eq!(
+        autumn_plugin_carousel::head().into_string(),
+        pack().head().into_string()
+    );
+}
