@@ -32,7 +32,13 @@ impl PerView {
     /// Make a value. A value below 1 becomes 1. A value above 6 becomes 6.
     #[must_use]
     pub const fn new(count: u8) -> Self {
-        Self(count)
+        if count == 0 {
+            Self(1)
+        } else if count > Self::MAX {
+            Self(Self::MAX)
+        } else {
+            Self(count)
+        }
     }
 
     /// The value.
@@ -102,9 +108,12 @@ impl Default for CarouselText<'_> {
 impl CarouselText<'_> {
     /// The position text for slide `n` (from 1) of `total`.
     #[must_use]
+    // `{n}` and `{total}` are template slots, not format arguments.
+    #[allow(clippy::literal_string_with_formatting_args)]
     pub fn position_of(&self, n: usize, total: usize) -> String {
-        let _ = (n, total);
-        String::new()
+        self.position
+            .replace("{n}", &n.to_string())
+            .replace("{total}", &total.to_string())
     }
 }
 
@@ -134,6 +143,11 @@ impl<'a> CarouselConfig<'a> {
     /// fragment links and `aria-controls`.
     #[must_use]
     pub fn new(id: &'a str, label: &'a str) -> Self {
+        assert!(
+            is_valid_id(id),
+            "carousel id {id:?} is not valid: use an ASCII letter, then ASCII \
+             letters, digits, `-` or `_`"
+        );
         Self {
             id,
             label,
@@ -177,9 +191,16 @@ impl<'a> CarouselConfig<'a> {
     }
 
     /// Turn on automatic rotation with an interval.
+    ///
+    /// An interval below [`MIN_ROTATION_INTERVAL`] becomes that value. Give
+    /// users time to read: 5 s or more is the usual advice.
     #[must_use]
     pub const fn rotation_interval(mut self, interval: Duration) -> Self {
-        self.rotation = Some(interval);
+        self.rotation = Some(if interval.as_nanos() < MIN_ROTATION_INTERVAL.as_nanos() {
+            MIN_ROTATION_INTERVAL
+        } else {
+            interval
+        });
         self
     }
 
@@ -221,7 +242,11 @@ impl<'a> CarouselConfig<'a> {
     /// [`Markers::None`] for a rail.
     #[must_use]
     pub const fn marker_kind(&self) -> Markers {
-        Markers::None
+        match (self.markers, self.layout) {
+            (Some(markers), _) => markers,
+            (None, Layout::Slideshow) => Markers::Dots,
+            (None, Layout::Rail(_)) => Markers::None,
+        }
     }
 
     /// The rotation interval, or `None` when rotation is off.
@@ -229,4 +254,11 @@ impl<'a> CarouselConfig<'a> {
     pub const fn rotation(&self) -> Option<Duration> {
         self.rotation
     }
+}
+
+/// `true` when `id` is `[A-Za-z][A-Za-z0-9_-]*`.
+fn is_valid_id(id: &str) -> bool {
+    let mut bytes = id.bytes();
+    bytes.next().is_some_and(|b| b.is_ascii_alphabetic())
+        && bytes.all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }

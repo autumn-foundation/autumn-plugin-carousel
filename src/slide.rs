@@ -4,7 +4,7 @@ use maud::Markup;
 
 /// The content of a slide.
 #[derive(Debug, Clone)]
-pub(crate) enum Content<'a> {
+pub enum Content<'a> {
     /// App markup.
     Markup(Markup),
     /// An image.
@@ -68,7 +68,9 @@ impl<'a> Slide<'a> {
     /// Add a caption under an image. A markup slide ignores it.
     #[must_use]
     pub fn caption(mut self, caption: Markup) -> Self {
-        let _ = caption;
+        if let Content::Image { caption: slot, .. } = &mut self.content {
+            *slot = Some(caption);
+        }
         self
     }
 
@@ -78,5 +80,13 @@ impl<'a> Slide<'a> {
     pub const fn thumbnail(mut self, src: &'a str) -> Self {
         self.thumbnail = Some(src);
         self
+    }
+
+    /// The image size, or `None` for a markup slide.
+    pub(crate) const fn size(&self) -> (Option<u32>, Option<u32>) {
+        match &self.content {
+            Content::Image { width, height, .. } => (Some(*width), Some(*height)),
+            Content::Markup(_) => (None, None),
+        }
     }
 }

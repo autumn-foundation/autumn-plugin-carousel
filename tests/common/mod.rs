@@ -2,8 +2,8 @@
 
 #![allow(dead_code)]
 
-use autumn_web::form::FieldOptions;
 use autumn_plugin_carousel::{CarouselConfig, Slide, carousel};
+use autumn_web::form::FieldOptions;
 use scraper::{ElementRef, Html, Selector};
 
 /// Render and parse a carousel.
@@ -27,7 +27,13 @@ pub fn all<'a>(html: &'a Html, css: &str) -> Vec<ElementRef<'a>> {
 /// The one element that matches `css`.
 pub fn one<'a>(html: &'a Html, css: &str) -> ElementRef<'a> {
     let found = all(html, css);
-    assert_eq!(found.len(), 1, "expected one `{css}`, got {}: {}", found.len(), html.html());
+    assert_eq!(
+        found.len(),
+        1,
+        "expected one `{css}`, got {}: {}",
+        found.len(),
+        html.html()
+    );
     found[0]
 }
 

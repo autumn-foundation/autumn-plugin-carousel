@@ -14,7 +14,11 @@ fn ac15_the_pack_passes_static_conformance() {
 #[test]
 fn ac16_each_variant_has_a_story() {
     let pack = pack();
-    let slugs: Vec<&str> = pack.stories().iter().map(|s| s.slug()).collect();
+    let slugs: Vec<&str> = pack
+        .stories()
+        .iter()
+        .map(autumn_web::stories::Story::slug)
+        .collect();
     assert_eq!(
         slugs,
         [
@@ -27,7 +31,10 @@ fn ac16_each_variant_has_a_story() {
     );
     for story in pack.stories() {
         assert!(story.slug().starts_with("carousel-"));
-        let html = story.render().map(maud::Markup::into_string).unwrap_or_default();
+        let html = story
+            .render()
+            .map(maud::Markup::into_string)
+            .unwrap_or_default();
         assert!(html.contains("autumn-carousel-root"), "{}", story.slug());
     }
 }
@@ -35,7 +42,10 @@ fn ac16_each_variant_has_a_story() {
 #[test]
 fn ac17_the_bundle_holds_the_css_and_js() {
     assert_eq!(pack().name(), PACK_NAME);
-    let paths: Vec<&str> = ASSETS.iter().map(|a| a.logical_path()).collect();
+    let paths: Vec<&str> = ASSETS
+        .iter()
+        .map(autumn_web::assets::PluginAsset::logical_path)
+        .collect();
     assert_eq!(paths, ["carousel.css", "carousel.js"]);
     let head = pack().head().into_string();
     assert!(head.contains("<link"), "{head}");

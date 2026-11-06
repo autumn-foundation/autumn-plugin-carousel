@@ -1,0 +1,253 @@
+/* Carousel widget pack. Public tokens only: no raw colors. */
+
+.autumn-carousel-root {
+    --autumn-carousel-gap: var(--space-4);
+    --autumn-carousel-per-view: 1;
+    --autumn-carousel-control: 2.75rem;
+    --autumn-carousel-dot: 0.75rem;
+    position: relative;
+    display: grid;
+    gap: var(--space-3);
+    min-inline-size: 0;
+}
+
+/* The controls come first in the DOM. They show under the track. */
+.autumn-carousel-bar {
+    order: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.autumn-carousel-track {
+    order: 1;
+    display: flex;
+    gap: var(--autumn-carousel-gap);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: var(--control-border) transparent;
+    border-radius: var(--radius-md);
+}
+
+.autumn-carousel-track:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .autumn-carousel-track {
+        scroll-behavior: smooth;
+    }
+}
+
+.autumn-carousel-slide {
+    flex: 0 0 100%;
+    min-inline-size: 0;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
+
+/* Show the start slide first with JS off, where the browser can. */
+.autumn-carousel-slide--start {
+    scroll-initial-target: nearest;
+}
+
+/* A rail shows one card and a part of the next card on a narrow screen. */
+.autumn-carousel-root--rail .autumn-carousel-track {
+    scroll-snap-type: x proximity;
+}
+
+.autumn-carousel-root--rail .autumn-carousel-slide {
+    flex-basis: 80%;
+    scroll-snap-stop: normal;
+}
+
+.autumn-carousel-root--per-view-2 { --autumn-carousel-per-view: 2; }
+.autumn-carousel-root--per-view-3 { --autumn-carousel-per-view: 3; }
+.autumn-carousel-root--per-view-4 { --autumn-carousel-per-view: 4; }
+.autumn-carousel-root--per-view-5 { --autumn-carousel-per-view: 5; }
+.autumn-carousel-root--per-view-6 { --autumn-carousel-per-view: 6; }
+
+@media (min-width: 48rem) {
+    .autumn-carousel-root--rail .autumn-carousel-slide {
+        flex-basis: calc(
+            (100% - (var(--autumn-carousel-per-view) - 1) * var(--autumn-carousel-gap))
+            / var(--autumn-carousel-per-view)
+        );
+    }
+}
+
+/* Images and captions. */
+.autumn-carousel-figure {
+    margin: 0;
+}
+
+.autumn-carousel-image {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+}
+
+.autumn-carousel-caption {
+    padding-block-start: var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* Buttons: 44 px targets. */
+.autumn-carousel-rotate,
+.autumn-carousel-prev,
+.autumn-carousel-next {
+    display: inline-grid;
+    place-items: center;
+    inline-size: var(--autumn-carousel-control);
+    block-size: var(--autumn-carousel-control);
+    padding: 0;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-full);
+    color: var(--text);
+    background: var(--surface);
+    font: inherit;
+    cursor: pointer;
+}
+
+.autumn-carousel-rotate:hover,
+.autumn-carousel-prev:hover,
+.autumn-carousel-next:hover {
+    background: var(--surface-muted);
+}
+
+.autumn-carousel-prev[aria-disabled="true"],
+.autumn-carousel-next[aria-disabled="true"] {
+    color: var(--text-muted);
+    background: var(--surface);
+    border-style: dashed;
+    cursor: default;
+}
+
+/* A class `display` value beats the `hidden` attribute. Keep it hidden. */
+.autumn-carousel-root [hidden] {
+    display: none;
+}
+
+.autumn-carousel-icon {
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    fill: currentcolor;
+}
+
+.autumn-carousel-root:dir(rtl) .autumn-carousel-prev .autumn-carousel-icon,
+.autumn-carousel-root:dir(rtl) .autumn-carousel-next .autumn-carousel-icon {
+    transform: scaleX(-1);
+}
+
+/* The rotation button shows the icon of its action. */
+.autumn-carousel-root[data-autumn-carousel-state="stopped"] .autumn-carousel-icon-pause,
+.autumn-carousel-root:not([data-autumn-carousel-state="stopped"]) .autumn-carousel-icon-play {
+    display: none;
+}
+
+/* Markers: 24 px targets or more. */
+.autumn-carousel-markers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+}
+
+.autumn-carousel-marker {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 1.5rem;
+    min-block-size: 1.5rem;
+    border-radius: var(--radius-full);
+    color: var(--text);
+    text-decoration: none;
+}
+
+/* The current dot is a wide pill: a shape change, not only a color. */
+.autumn-carousel-marker--dot::before {
+    content: "";
+    inline-size: var(--autumn-carousel-dot);
+    block-size: var(--autumn-carousel-dot);
+    border: 2px solid var(--control-border);
+    border-radius: var(--radius-full);
+}
+
+.autumn-carousel-marker--dot[aria-current="true"]::before {
+    inline-size: calc(var(--autumn-carousel-dot) * 2.5);
+    border-color: var(--primary);
+    background: var(--primary);
+}
+
+.autumn-carousel-marker--number {
+    min-inline-size: 2rem;
+    min-block-size: 2rem;
+    border: 1px solid var(--control-border);
+    font-size: var(--font-size-sm);
+}
+
+.autumn-carousel-marker--number[aria-current="true"] {
+    border-width: 2px;
+    border-color: var(--primary);
+    color: var(--on-primary);
+    background: var(--primary);
+    font-weight: var(--font-weight-bold);
+}
+
+.autumn-carousel-marker--thumbnail {
+    inline-size: 4rem;
+    block-size: 3rem;
+    padding: 0;
+    overflow: hidden;
+    border: 3px solid transparent;
+    border-radius: var(--radius-sm);
+}
+
+.autumn-carousel-marker--thumbnail[aria-current="true"] {
+    border-color: var(--primary);
+}
+
+/* A slide with no image gets a dot in place of a thumbnail. */
+.autumn-carousel-marker--thumbnail:not(:has(img))::before {
+    content: "";
+    inline-size: var(--autumn-carousel-dot);
+    block-size: var(--autumn-carousel-dot);
+    border: 2px solid var(--control-border);
+    border-radius: var(--radius-full);
+}
+
+.autumn-carousel-thumbnail {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+}
+
+.autumn-carousel-marker:focus-visible,
+.autumn-carousel-rotate:focus-visible,
+.autumn-carousel-prev:focus-visible,
+.autumn-carousel-next:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Forced colors replace backgrounds. Keep the current marker visible. */
+@media (forced-colors: active) {
+    .autumn-carousel-marker--dot[aria-current="true"]::before,
+    .autumn-carousel-marker--number[aria-current="true"] {
+        forced-color-adjust: none;
+        border-color: Highlight;
+        color: HighlightText;
+        background: Highlight;
+    }
+
+    .autumn-carousel-marker--thumbnail[aria-current="true"] {
+        border-color: Highlight;
+    }
+}

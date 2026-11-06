@@ -16,7 +16,10 @@ use common::{all, attr, one, render, text, text_slides};
 
 #[test]
 fn ac01_root_is_a_named_carousel_section() {
-    let html = render(&text_slides(3), &CarouselConfig::new("hero", "Featured news"));
+    let html = render(
+        &text_slides(3),
+        &CarouselConfig::new("hero", "Featured news"),
+    );
     let root = one(&html, "section#hero");
     assert_eq!(attr(root, "aria-roledescription"), Some("carousel"));
     assert_eq!(attr(root, "aria-label"), Some("Featured news"));
@@ -86,7 +89,10 @@ fn ac04_buttons_are_hidden_named_and_control_the_track() {
     ] {
         let button = one(&html, &format!("button.{class}"));
         assert_eq!(attr(button, "type"), Some("button"));
-        assert!(attr(button, "hidden").is_some(), "{class} must start hidden");
+        assert!(
+            attr(button, "hidden").is_some(),
+            "{class} must start hidden"
+        );
         assert_eq!(attr(button, "aria-controls"), Some("hero-track"));
         assert_eq!(text(button), name);
     }
@@ -161,9 +167,7 @@ fn ac06_markers_link_to_slides_and_mark_the_start() {
         let current = attr(*marker, "aria-current");
         assert_eq!(current, (i == 0).then_some("true"));
     }
-    assert!(
-        attr(markers[0], "class").is_some_and(|c| c.contains("autumn-carousel-marker--dot"))
-    );
+    assert!(attr(markers[0], "class").is_some_and(|c| c.contains("autumn-carousel-marker--dot")));
 }
 
 #[test]
@@ -233,10 +237,16 @@ fn ac08_images_have_size_alt_and_lazy_loading() {
     assert_eq!(attr(images[0], "fetchpriority"), None);
     assert_eq!(attr(images[1], "loading"), Some("lazy"));
     assert_eq!(attr(images[2], "loading"), Some("lazy"));
-    let caption = one(&html, "#g-slide-2 figure figcaption.autumn-carousel-caption");
+    let caption = one(
+        &html,
+        "#g-slide-2 figure figcaption.autumn-carousel-caption",
+    );
     assert_eq!(text(caption), "Second");
 
-    let html = render(&slides, &CarouselConfig::new("g", "Photos").priority().start(1));
+    let html = render(
+        &slides,
+        &CarouselConfig::new("g", "Photos").priority().start(1),
+    );
     let images = all(&html, ".autumn-carousel-slide img");
     assert_eq!(attr(images[0], "loading"), Some("lazy"));
     assert_eq!(attr(images[1], "loading"), Some("eager"));
@@ -245,7 +255,11 @@ fn ac08_images_have_size_alt_and_lazy_loading() {
 
 #[test]
 fn ac09_no_slides_give_no_markup() {
-    let html = carousel(&[], &CarouselConfig::new("x", "Empty"), &FieldOptions::new());
+    let html = carousel(
+        &[],
+        &CarouselConfig::new("x", "Empty"),
+        &FieldOptions::new(),
+    );
     assert_eq!(html.into_string(), "");
 }
 
@@ -270,7 +284,10 @@ fn ac09_many_slides_have_a_live_region() {
     let live = one(&html, "[aria-live]");
     assert_eq!(attr(live, "aria-live"), Some("polite"));
     assert_eq!(attr(live, "aria-atomic"), Some("true"));
-    assert_eq!(attr(live, "class"), Some("autumn-visually-hidden autumn-carousel-status"));
+    assert_eq!(
+        attr(live, "class"),
+        Some("autumn-visually-hidden autumn-carousel-status")
+    );
     assert_eq!(text(live), "");
 }
 
@@ -286,7 +303,10 @@ fn ac10_start_is_clamped_and_marked() {
         Some("1")
     );
 
-    let html = render(&text_slides(3), &CarouselConfig::new("s", "Start").start(99));
+    let html = render(
+        &text_slides(3),
+        &CarouselConfig::new("s", "Start").start(99),
+    );
     assert_eq!(
         attr(one(&html, ".autumn-carousel-slide--start"), "id"),
         Some("s-slide-3")
@@ -307,9 +327,7 @@ fn ac11_all_text_comes_from_carousel_text() {
         position: Cow::Borrowed("{n} von {total}"),
     };
     assert_eq!(text_cfg.position_of(2, 5), "2 von 5");
-    let config = CarouselConfig::new("k", "Neu")
-        .auto_rotate()
-        .text(text_cfg);
+    let config = CarouselConfig::new("k", "Neu").auto_rotate().text(text_cfg);
     let html = render(&text_slides(2), &config);
     let markup = html.html();
     for english in [
@@ -322,13 +340,19 @@ fn ac11_all_text_comes_from_carousel_text() {
         "automatic slide show",
         " of ",
     ] {
-        assert!(!markup.contains(english), "`{english}` is not translated: {markup}");
+        assert!(
+            !markup.contains(english),
+            "`{english}` is not translated: {markup}"
+        );
     }
     assert_eq!(
         attr(one(&html, "section#k"), "aria-roledescription"),
         Some("karussell")
     );
-    assert_eq!(attr(one(&html, "#k-slide-1"), "aria-label"), Some("1 von 2"));
+    assert_eq!(
+        attr(one(&html, "#k-slide-1"), "aria-label"),
+        Some("1 von 2")
+    );
     assert_eq!(
         attr(one(&html, ".autumn-carousel-status"), "data-position"),
         Some("{n} von {total}")
@@ -411,7 +435,11 @@ fn ac14_markup_is_csp_safe() {
     assert!(all(&html, "[style]").is_empty());
     for el in all(&html, "*") {
         for (name, _) in el.value().attrs() {
-            assert!(!name.starts_with("on"), "`{name}` on <{}>", el.value().name());
+            assert!(
+                !name.starts_with("on"),
+                "`{name}` on <{}>",
+                el.value().name()
+            );
         }
     }
     assert_eq!(
@@ -428,7 +456,10 @@ fn rail_layout_sets_the_per_view_class() {
     );
     let class = attr(one(&html, "section#r"), "class").unwrap_or_default();
     assert!(class.contains("autumn-carousel-root--rail"), "{class}");
-    assert!(class.contains("autumn-carousel-root--per-view-4"), "{class}");
+    assert!(
+        class.contains("autumn-carousel-root--per-view-4"),
+        "{class}"
+    );
     let html = render(&text_slides(5), &CarouselConfig::new("s", "Show"));
     let class = attr(one(&html, "section#s"), "class").unwrap_or_default();
     assert!(class.contains("autumn-carousel-root--slideshow"), "{class}");
@@ -460,7 +491,9 @@ fn controls_come_before_the_track_in_dom_order() {
 
 #[test]
 fn slide_content_is_kept() {
-    let slides = [Slide::new(maud::html! { h3 { "Title" } a href="/go" { "Go" } })];
+    let slides = [Slide::new(
+        maud::html! { h3 { "Title" } a href="/go" { "Go" } },
+    )];
     let html = render(&slides, &CarouselConfig::new("c", "Content"));
     assert_eq!(text(one(&html, "#c-slide-1 h3")), "Title");
     assert_eq!(attr(one(&html, "#c-slide-1 a"), "href"), Some("/go"));

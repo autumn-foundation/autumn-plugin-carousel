@@ -20,7 +20,7 @@ use maud::{DOCTYPE, Markup, html};
 
 // ── Fixture pages ───────────────────────────────────────────────────────
 
-fn layout(dir: &str, body: Markup) -> Markup {
+fn layout(dir: &str, body: &Markup) -> Markup {
     html! {
         (DOCTYPE)
         html lang="en" dir=(dir) {
@@ -37,7 +37,7 @@ fn layout(dir: &str, body: Markup) -> Markup {
                 main {
                     h1 { "Carousel test" }
                     a id="before" href="#top" { "Before" }
-                    (body)
+                    (*body)
                     a id="after" href="#top" { "After" }
                 }
             }
@@ -63,23 +63,23 @@ fn show(config: &CarouselConfig<'_>) -> Markup {
 
 #[get("/slideshow")]
 async fn slideshow_page() -> Markup {
-    layout("ltr", show(&CarouselConfig::new("show", "News")))
+    layout("ltr", &show(&CarouselConfig::new("show", "News")))
 }
 
 #[get("/rewind")]
 async fn rewind_page() -> Markup {
-    layout("ltr", show(&CarouselConfig::new("show", "News").rewind()))
+    layout("ltr", &show(&CarouselConfig::new("show", "News").rewind()))
 }
 
 #[get("/rotate")]
 async fn rotate_page() -> Markup {
     let config = CarouselConfig::new("show", "News").rotation_interval(Duration::from_secs(1));
-    layout("ltr", show(&config))
+    layout("ltr", &show(&config))
 }
 
 #[get("/rtl")]
 async fn rtl_page() -> Markup {
-    layout("rtl", show(&CarouselConfig::new("show", "News")))
+    layout("rtl", &show(&CarouselConfig::new("show", "News")))
 }
 
 #[get("/rail")]
@@ -89,7 +89,7 @@ async fn rail_page() -> Markup {
         .markers(Markers::Numbers);
     layout(
         "ltr",
-        carousel(&link_slides(8), &config, &FieldOptions::new()),
+        &carousel(&link_slides(8), &config, &FieldOptions::new()),
     )
 }
 
@@ -97,7 +97,7 @@ async fn rail_page() -> Markup {
 async fn swap_page() -> Markup {
     layout(
         "ltr",
-        html! {
+        &html! {
             button id="load" type="button" hx-get="/swap/fragment" hx-target="#slot"
                 hx-swap="innerHTML" { "Load" }
             div id="slot" {}
@@ -182,9 +182,7 @@ fn in_view(n: usize) -> String {
 }
 
 fn status_is(text: &str) -> String {
-    format!(
-        "document.querySelector('#show .autumn-carousel-status').textContent === '{text}'"
-    )
+    format!("document.querySelector('#show .autumn-carousel-status').textContent === '{text}'")
 }
 
 const ROTATE_LABEL: &str =
@@ -228,15 +226,25 @@ async fn ac19_without_js_all_slides_show_and_markers_work() {
         "the buttons must stay hidden without JS"
     );
     assert_eq!(
-        eval::<i64>(&page, "document.querySelectorAll('#show .autumn-carousel-slide').length").await,
+        eval::<i64>(
+            &page,
+            "document.querySelectorAll('#show .autumn-carousel-slide').length"
+        )
+        .await,
         4
     );
     assert!(
         eval::<bool>(&page, "!document.querySelector('[inert]')").await,
         "no slide is inert without JS"
     );
-    assert!(eval::<bool>(&page, &in_view(1)).await, "slide 1 shows first");
-    page.click("a[href='#show-slide-3']").await.expect("click marker");
+    assert!(
+        eval::<bool>(&page, &in_view(1)).await,
+        "slide 1 shows first"
+    );
+    // `Page::click` waits on page JS. Use a DOM click.
+    page.evaluate("document.querySelector(\"a[href='#show-slide-3']\").click()")
+        .await
+        .expect("click marker");
     assert_poll(&page, &in_view(3), "the marker link shows slide 3").await;
     assert_poll(&page, "location.hash === '#show-slide-3'", "the fragment").await;
 }
@@ -257,7 +265,9 @@ async fn ac20_next_and_previous_move_announce_and_keep_focus() {
     assert_eq!(current(&page).await, 0);
     assert!(eval::<bool>(&page, &status_is("")).await, "silent at load");
 
-    page.click("#show .autumn-carousel-next").await.expect("next");
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
     assert_poll(&page, &format!("{CURRENT} === 1"), "next selects slide 2").await;
     assert_poll(&page, &in_view(2), "slide 2 in view").await;
     assert_poll(&page, &status_is("2 of 4"), "status after next").await;
@@ -270,7 +280,9 @@ async fn ac20_next_and_previous_move_announce_and_keep_focus() {
         "focus stays on next"
     );
 
-    page.click("#show .autumn-carousel-prev").await.expect("prev");
+    page.click("#show .autumn-carousel-prev")
+        .await
+        .expect("prev");
     assert_poll(&page, &format!("{CURRENT} === 0"), "prev selects slide 1").await;
     assert_poll(&page, &in_view(1), "slide 1 in view").await;
     assert_poll(&page, &status_is("1 of 4"), "status after prev").await;
@@ -289,7 +301,12 @@ async fn ac20_arrow_keys_on_the_track_scroll_natively() {
         .await
     );
     page.press("ArrowRight").await.expect("ArrowRight");
-    assert_poll(&page, &format!("{CURRENT} === 1"), "ArrowRight scrolls to slide 2").await;
+    assert_poll(
+        &page,
+        &format!("{CURRENT} === 1"),
+        "ArrowRight scrolls to slide 2",
+    )
+    .await;
     assert_poll(&page, &in_view(2), "slide 2 in view").await;
 }
 
@@ -298,24 +315,28 @@ async fn ac20_arrow_keys_on_the_track_scroll_natively() {
 async fn ac21_buttons_are_disabled_at_the_ends_without_rewind() {
     let runner = runner().await;
     let page = open(&runner, "/slideshow").await;
-    let prev_disabled =
-        "document.querySelector('#show .autumn-carousel-prev').getAttribute('aria-disabled') === 'true'";
-    let next_disabled =
-        "document.querySelector('#show .autumn-carousel-next').getAttribute('aria-disabled') === 'true'";
+    let prev_disabled = "document.querySelector('#show .autumn-carousel-prev').getAttribute('aria-disabled') === 'true'";
+    let next_disabled = "document.querySelector('#show .autumn-carousel-next').getAttribute('aria-disabled') === 'true'";
     assert_poll(&page, prev_disabled, "prev is disabled at the start").await;
     assert!(!eval::<bool>(&page, next_disabled).await);
 
-    page.click("#show .autumn-carousel-prev").await.expect("prev");
+    page.click("#show .autumn-carousel-prev")
+        .await
+        .expect("prev");
     tokio::time::sleep(Duration::from_millis(400)).await;
     assert_eq!(current(&page).await, 0, "a disabled prev does nothing");
 
     for n in 1..=3 {
-        page.click("#show .autumn-carousel-next").await.expect("next");
+        page.click("#show .autumn-carousel-next")
+            .await
+            .expect("next");
         assert_poll(&page, &format!("{CURRENT} === {n}"), "next").await;
     }
     assert_poll(&page, next_disabled, "next is disabled at the end").await;
     assert_poll(&page, &format!("!({prev_disabled})"), "prev is enabled").await;
-    page.click("#show .autumn-carousel-next").await.expect("next");
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
     tokio::time::sleep(Duration::from_millis(400)).await;
     assert_eq!(current(&page).await, 3, "a disabled next does nothing");
 }
@@ -333,11 +354,20 @@ async fn ac21_rewind_wraps_at_the_ends() {
         .await,
         "no button is disabled with rewind"
     );
-    page.click("#show .autumn-carousel-prev").await.expect("prev");
+    page.click("#show .autumn-carousel-prev")
+        .await
+        .expect("prev");
     assert_poll(&page, &format!("{CURRENT} === 3"), "prev wraps to the last").await;
     assert_poll(&page, &in_view(4), "slide 4 in view").await;
-    page.click("#show .autumn-carousel-next").await.expect("next");
-    assert_poll(&page, &format!("{CURRENT} === 0"), "next wraps to the first").await;
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
+    assert_poll(
+        &page,
+        &format!("{CURRENT} === 0"),
+        "next wraps to the first",
+    )
+    .await;
     assert_poll(&page, &in_view(1), "slide 1 in view").await;
 }
 
@@ -365,7 +395,12 @@ async fn ac23_a_native_scroll_updates_the_current_marker() {
     )
     .await
     .expect("scroll");
-    assert_poll(&page, &format!("{CURRENT} === 3"), "the marker follows the scroll").await;
+    assert_poll(
+        &page,
+        &format!("{CURRENT} === 3"),
+        "the marker follows the scroll",
+    )
+    .await;
     assert!(
         eval::<bool>(&page, &status_is("")).await,
         "a free scroll does not speak"
@@ -377,10 +412,23 @@ async fn ac23_a_native_scroll_updates_the_current_marker() {
 async fn ac24_slideshow_slides_out_of_view_are_inert() {
     let runner = runner().await;
     let page = open(&runner, "/slideshow").await;
-    let inert = "[...document.querySelectorAll('#show .autumn-carousel-slide')].map(s => s.inert).join()";
-    assert_poll(&page, &format!("{inert} === 'false,true,true,true'"), "start").await;
-    page.click("#show .autumn-carousel-next").await.expect("next");
-    assert_poll(&page, &format!("{inert} === 'true,false,true,true'"), "after next").await;
+    let inert =
+        "[...document.querySelectorAll('#show .autumn-carousel-slide')].map(s => s.inert).join()";
+    assert_poll(
+        &page,
+        &format!("{inert} === 'false,true,true,true'"),
+        "start",
+    )
+    .await;
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
+    assert_poll(
+        &page,
+        &format!("{inert} === 'true,false,true,true'"),
+        "after next",
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -388,11 +436,17 @@ async fn ac24_slideshow_slides_out_of_view_are_inert() {
 async fn ac24_rail_cards_are_never_inert() {
     let runner = runner().await;
     let page = open(&runner, "/rail").await;
-    let none_inert = "[...document.querySelectorAll('#rail .autumn-carousel-slide')].every(s => !s.inert)";
+    let none_inert =
+        "[...document.querySelectorAll('#rail .autumn-carousel-slide')].every(s => !s.inert)";
     assert_poll(&page, none_inert, "no card is inert").await;
-    page.click("#rail .autumn-carousel-next").await.expect("next");
+    page.click("#rail .autumn-carousel-next")
+        .await
+        .expect("next");
     tokio::time::sleep(Duration::from_millis(600)).await;
-    assert!(eval::<bool>(&page, none_inert).await, "no card is inert after a move");
+    assert!(
+        eval::<bool>(&page, none_inert).await,
+        "no card is inert after a move"
+    );
     assert!(
         eval::<bool>(
             &page,
@@ -416,10 +470,16 @@ async fn ac24_rail_cards_are_never_inert() {
 async fn ac25_rotation_moves_without_focus_or_speech() {
     let runner = runner().await;
     let page = open(&runner, "/rotate").await;
-    assert_eq!(eval::<String>(&page, ROTATE_LABEL).await, "Stop automatic slide show");
+    assert_eq!(
+        eval::<String>(&page, ROTATE_LABEL).await,
+        "Stop automatic slide show"
+    );
     assert_poll(&page, &format!("{CURRENT} >= 1"), "rotation moves").await;
     assert!(eval::<bool>(&page, "document.activeElement === document.body").await);
-    assert!(eval::<bool>(&page, &status_is("")).await, "rotation does not speak");
+    assert!(
+        eval::<bool>(&page, &status_is("")).await,
+        "rotation does not speak"
+    );
     assert_eq!(
         eval::<String>(
             &page,
@@ -435,7 +495,12 @@ async fn ac25_rotation_moves_without_focus_or_speech() {
 async fn ac25_rotation_wraps_to_the_first_slide() {
     let runner = runner().await;
     let page = open(&runner, "/rotate").await;
-    assert_poll(&page, &format!("{CURRENT} === 3"), "rotation reaches the end").await;
+    assert_poll(
+        &page,
+        &format!("{CURRENT} === 3"),
+        "rotation reaches the end",
+    )
+    .await;
     assert_poll(&page, &format!("{CURRENT} === 0"), "rotation wraps").await;
 }
 
@@ -444,9 +509,11 @@ async fn ac25_rotation_wraps_to_the_first_slide() {
 async fn ac26_focus_stops_rotation_until_the_user_starts_it() {
     let runner = runner().await;
     let page = open(&runner, "/rotate").await;
-    page.evaluate("document.querySelector('#show-slide-1 .slide-link').focus({ preventScroll: true })")
-        .await
-        .expect("focus");
+    page.evaluate(
+        "document.querySelector('#show-slide-1 .slide-link').focus({ preventScroll: true })",
+    )
+    .await
+    .expect("focus");
     assert_poll(
         &page,
         &format!("{ROTATE_LABEL} === 'Start automatic slide show'"),
@@ -457,7 +524,9 @@ async fn ac26_focus_stops_rotation_until_the_user_starts_it() {
     tokio::time::sleep(Duration::from_millis(2500)).await;
     assert_eq!(current(&page).await, at, "stopped rotation does not move");
 
-    page.click("#show .autumn-carousel-rotate").await.expect("start");
+    page.click("#show .autumn-carousel-rotate")
+        .await
+        .expect("start");
     assert_poll(
         &page,
         &format!("{ROTATE_LABEL} === 'Stop automatic slide show'"),
@@ -477,7 +546,9 @@ async fn ac26_focus_stops_rotation_until_the_user_starts_it() {
 async fn ac26_a_click_on_stop_stops_rotation() {
     let runner = runner().await;
     let page = open(&runner, "/rotate").await;
-    page.click("#show .autumn-carousel-rotate").await.expect("stop");
+    page.click("#show .autumn-carousel-rotate")
+        .await
+        .expect("stop");
     assert_poll(
         &page,
         &format!("{ROTATE_LABEL} === 'Start automatic slide show'"),
@@ -494,7 +565,9 @@ async fn ac26_a_click_on_stop_stops_rotation() {
 async fn ac26_a_user_move_stops_rotation() {
     let runner = runner().await;
     let page = open(&runner, "/rotate").await;
-    page.click("#show .autumn-carousel-next").await.expect("next");
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
     assert_poll(
         &page,
         &format!("{ROTATE_LABEL} === 'Start automatic slide show'"),
@@ -509,7 +582,9 @@ async fn ac26_a_user_move_stops_rotation() {
 async fn ac27_hover_pauses_rotation() {
     let runner = runner().await;
     let page = open(&runner, "/rotate").await;
-    page.hover("#show .autumn-carousel-track").await.expect("hover");
+    page.hover("#show .autumn-carousel-track")
+        .await
+        .expect("hover");
     let at = current(&page).await;
     tokio::time::sleep(Duration::from_millis(2500)).await;
     assert_eq!(current(&page).await, at, "hover pauses rotation");
@@ -550,7 +625,10 @@ async fn ac28_reduced_motion_starts_rotation_stopped() {
         "the copy is set up",
     )
     .await;
-    assert_eq!(eval::<String>(&page, ROTATE_LABEL).await, "Start automatic slide show");
+    assert_eq!(
+        eval::<String>(&page, ROTATE_LABEL).await,
+        "Start automatic slide show"
+    );
     let at = current(&page).await;
     tokio::time::sleep(Duration::from_millis(2500)).await;
     assert_eq!(current(&page).await, at);
@@ -562,7 +640,12 @@ async fn ac29_an_htmx_swap_sets_up_the_carousel() {
     let runner = runner().await;
     let page = runner.page().await.expect("page");
     page.visit("/swap").await.expect("visit");
-    assert_poll(&page, "document.readyState === 'complete' && !!window.htmx", "load").await;
+    assert_poll(
+        &page,
+        "document.readyState === 'complete' && !!window.htmx",
+        "load",
+    )
+    .await;
     page.click("#load").await.expect("load");
     assert_poll(
         &page,
@@ -570,9 +653,18 @@ async fn ac29_an_htmx_swap_sets_up_the_carousel() {
         "the swapped carousel is set up",
     )
     .await;
-    page.click("#show .autumn-carousel-next").await.expect("next");
-    assert_poll(&page, &format!("{CURRENT} === 1"), "next works after a swap").await;
-    page.expect_no_console_errors().await.expect("no console errors");
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
+    assert_poll(
+        &page,
+        &format!("{CURRENT} === 1"),
+        "next works after a swap",
+    )
+    .await;
+    page.expect_no_console_errors()
+        .await
+        .expect("no console errors");
 }
 
 #[tokio::test]
@@ -580,8 +672,13 @@ async fn ac29_an_htmx_swap_sets_up_the_carousel() {
 async fn ac30_next_works_right_to_left() {
     let runner = runner().await;
     let page = open(&runner, "/rtl").await;
-    assert!(eval::<bool>(&page, &in_view(1)).await, "slide 1 shows first");
-    page.click("#show .autumn-carousel-next").await.expect("next");
+    assert!(
+        eval::<bool>(&page, &in_view(1)).await,
+        "slide 1 shows first"
+    );
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
     assert_poll(&page, &format!("{CURRENT} === 1"), "next selects slide 2").await;
     assert_poll(&page, &in_view(2), "slide 2 in view").await;
     assert!(
@@ -593,7 +690,9 @@ async fn ac30_next_works_right_to_left() {
         .await,
         "slide 2 is on the left in right-to-left text"
     );
-    page.click("#show .autumn-carousel-prev").await.expect("prev");
+    page.click("#show .autumn-carousel-prev")
+        .await
+        .expect("prev");
     assert_poll(&page, &format!("{CURRENT} === 0"), "prev selects slide 1").await;
 }
 
@@ -608,8 +707,15 @@ async fn ac31_a_change_event_fires_with_the_index() {
     )
     .await
     .expect("listen");
-    page.click("#show .autumn-carousel-next").await.expect("next");
-    assert_poll(&page, "window.__changes.join() === '1:show'", "one change event").await;
+    page.click("#show .autumn-carousel-next")
+        .await
+        .expect("next");
+    assert_poll(
+        &page,
+        "window.__changes.join() === '1:show'",
+        "one change event",
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -633,8 +739,16 @@ async fn ac32_a_removed_carousel_stops_its_timer() {
     .await
     .expect("remove");
     tokio::time::sleep(Duration::from_millis(2500)).await;
-    assert_eq!(eval::<i64>(&page, "window.__ticks").await, 0, "no change after removal");
-    assert_eq!(eval::<i64>(&page, "window.__timers").await, 0, "no new timer after removal");
+    assert_eq!(
+        eval::<i64>(&page, "window.__ticks").await,
+        0,
+        "no change after removal"
+    );
+    assert_eq!(
+        eval::<i64>(&page, "window.__timers").await,
+        0,
+        "no new timer after removal"
+    );
 }
 
 #[tokio::test]
